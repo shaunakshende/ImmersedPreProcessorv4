@@ -312,7 +312,7 @@ def save_geometry(G, S, processor_num):
     # outputs input_coor.dat, XVOL.dat, and Geometry.dat from input coordinates, volumes, and NURBS obj
     print "Saving input files...BG Mesh:"
     if(S.dim>2):
-    	print(np.size(S.knots[0][2:-2]),np.size(S.knots[1][2:-2]),np.size(S.knots[2][2:-2]))
+    	print("[%d %d %d]" % (S.knots[0].shape[0]-5, S.knots[1].shape[0]-5, S.knots[2].shape[0]-5))
     coor=G.coor
     vol=G.vols
     dx_vec=np.transpose(np.array([G.dx_vec]))

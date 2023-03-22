@@ -277,20 +277,83 @@ def background_with_uniform_refinement(C1, C2, t, num_div_vec, xyz, region_x, re
     S.refine(0,xhat[2:-1])
     S.refine(1,yhat[2:-1])
 
-    #When we make stretched grids, information about the element size is required to properly compute Lagrangian point ranks:
-    # lines = np.column_stack((np.transpose(xhat), np.transpose(yhat)))
-    # lines = np.vstack((np.array([xhat.shape[0], yhat.shape[0]]), lines))
-    # print(lines)
-    # np.savetxt('ElementInfo.dat', lines, fmt='%15.10f %15.10f')
+    # Debugging
+    # print(S.knots[0])
+    # print(S.knots[1])
+    # print(S.knots[2])
     return(S)
 
-def unif_linear_unif_BG_1D(S, X0, ramp_factor, axis, C0, C1, t, hmin, hmax, direction, n=1):
+def unif_linear_unif_BG_1D(S, X0, ramp_factor, axis, C0, C1, t, hmin, hmax, side=-1, n=1):
+    #Gradually ramp cell size from interior to exterior interpolating between a region
+    #of small uniform cell size (hmin) to a region with a large uniform cell size (hmax)
+    O=C1.points[0,:]
+    S_out=ruled(C0, C1)
+    S_out.elevate(1,n)
+    S_out.elevate(0,n)
+    if t>0:
+        S_out=extrude(S_out, t, 2)
+        S_out.elevate(2,n)
 
+    if(axis==0):
+        x = S.knots[0][2:-2];
+        yhat = S.knots[1][3:-3]
+        zhat = S.knots[2][3:-3]
+    if(axis==1):
+        x = S.knots[1][2:-2];
+        xhat = S.knots[0][3:-3];
+        zhat = S.knots[2][3:-3];
+    if(axis==2):
+        x = S.knots[2][2:-2];
+        xhat = S.knots[0][3:-3];
+        yhat = S.knots[1][3:-3];
 
+    if(side == -1):
+        xhat_out = x[x<=X0]
+    if(side ==  1):
+        xhat_out = x[x>=X0]
 
+    deltaX = hmin;
+    terminate = True;
 
+    if(side==-1):
+        while terminate:
+            new_knot = xhat_out[-1] + deltaX;
+            deltaX*=(1.0+ramp_factor);
+            if(deltaX>hmax):
+                deltaX = hmax;
+            if new_knot >= 1.0:
+                new_knot = 1.0;
+                terminate = False;
+            if(1.0-new_knot<deltaX):
+                new_knot = 1.0;
+                terminate = False;
+            xhat_out = np.hstack([xhat_out, new_knot])
 
-    return(S)
+    if(side==1):
+        while terminate:
+            new_knot = xhat_out[0] - deltaX;
+            deltaX*=(1.0+ramp_factor);
+            if(deltaX>hmax):
+                deltaX = hmax;
+            if new_knot <= 0.0:
+                new_knot = 0.0;
+                terminate = False;
+            if(new_knot<deltaX):
+                new_knot = 0.0;
+                terminate = False;
+            xhat_out = np.hstack([new_knot,xhat_out])
+
+    if(axis==0):
+        S_out.refine(0, xhat_out[1:-1])
+        S_out.refine(1, yhat); S_out.refine(2, zhat);
+    if(axis==1):
+        S_out.refine(1, xhat_out[1:-1])
+        S_out.refine(0, xhat); S_out.refine(2, zhat);
+    if(axis==2):
+        S_out.refine(2, xhat_out[1:-1])
+        S_out.refine(0, xhat); S_out.refine(1, yhat);
+
+    return(S_out)
 
 def translate(G,x,y,z):
     G.coor[1:,1]=G.coor[1:,1]+x*np.ones(G.coor[1:,1].shape)
